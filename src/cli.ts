@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { spawn } from "node:child_process";
 import process from "node:process";
 import { parseCliArgs } from "./args.ts";
 import { ensureOutputDir } from "./fs.ts";
@@ -41,6 +42,12 @@ async function main(): Promise<void> {
       return;
     }
 
+    const isFfmpegReady = await ensureFfmpegAvailable(options);
+    if (!isFfmpegReady) {
+      process.exitCode = EXIT_CODE_MISSING_DEP;
+      return;
+    }
+
     const code = await runYtDlp(command);
     if (code !== 0) {
       process.exitCode = code;
@@ -69,6 +76,34 @@ function handleError(error: unknown): void {
 
 function isErrnoException(value: unknown): value is NodeJS.ErrnoException {
   return value instanceof Error && "code" in value;
+}
+
+async function ensureFfmpegAvailable(options: { format?: string; listFormats: boolean }): Promise<boolean> {
+  if (options.format || options.listFormats) {
+    return true;
+  }
+
+  const available = await isCommandAvailable("ffmpeg", ["-version"]);
+  if (!available) {
+    console.error("默认最高质量需要 ffmpeg，请先安装（例如 `brew install ffmpeg`），或使用 -f best 跳过。");
+    return false;
+  }
+
+  return true;
+}
+
+async function isCommandAvailable(command: string, args: string[]): Promise<boolean> {
+  return await new Promise((resolve) => {
+    const child = spawn(command, args, { stdio: "ignore" });
+
+    child.on("error", () => {
+      resolve(false);
+    });
+
+    child.on("close", (code) => {
+      resolve(code === 0);
+    });
+  });
 }
 
 void main();

@@ -7,7 +7,7 @@ export function getHelpText(): string {
 选项:
   -o, --output <dir>      输出目录（默认 ~/Downloads）
   -n, --filename <name>   自定义文件名（可含扩展名）
-  -f, --format <format>   传给 yt-dlp 的格式选择（默认 best）
+  -f, --format <format>   传给 yt-dlp 的格式选择（默认 bestvideo*+bestaudio/best，需 ffmpeg）
   -F, --list-formats      列出可用格式
   --cookies <file>        cookies 文件路径
   --proxy <url>           代理地址

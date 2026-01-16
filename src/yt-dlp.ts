@@ -10,7 +10,7 @@ export type YtDlpCommand = {
 };
 
 const DEFAULT_TEMPLATE = "%(title)s.%(ext)s";
-const DEFAULT_FORMAT = "best";
+const DEFAULT_FORMAT = "bestvideo*+bestaudio/best";
 const BIN_NAME = "yt-dlp";
 
 export function buildYtDlpCommand(options: CliOptions): YtDlpCommand {

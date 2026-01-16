@@ -15,6 +15,22 @@ pnpm link --global
 x-downloader https://x.com/user/status/123
 ```
 
+## 发布与安装（npm）
+```bash
+# 发布（需要先登录 npm 并确保包名可用）
+pnpm publish --access public
+
+# 用户侧全局安装
+pnpm add -g x-downloader
+```
+
+## Skill 使用说明
+如果你希望把它当作“技能说明”来使用，可以直接复用以下流程：
+- 适用场景：在本仓库内使用或修改 x-downloader CLI，或排查 `yt-dlp` 相关问题。
+- 默认行为：输出到 `~/Downloads`，格式为 `bestvideo*+bestaudio/best`（最高质量，需要 `ffmpeg`）。
+- 修改入口：参数解析在 `src/args.ts`；下载命令构建在 `src/yt-dlp.ts`；帮助信息在 `src/help.ts`。
+- 测试与文档：更新功能后运行 `node --test`，同步更新 `README.md`、`TESTING.md`、`DEV_NOTE.md`。
+
 ## 使用方法
 ```bash
 # 直接运行
@@ -29,6 +45,6 @@ node src/cli.ts https://x.com/user/status/123 -F
 
 ## 注意事项
 - 该工具只负责组装与执行下载命令，实际解析与下载由 `yt-dlp` 完成。
-- 默认输出目录为 `~/Downloads`，默认格式为 `best`（最高质量单文件）。
-- 如需更高质量（分离音视频）可手动指定 `-f bestvideo*+bestaudio/best`，此时需要本地 `ffmpeg`。
+- 默认输出目录为 `~/Downloads`，默认格式为 `bestvideo*+bestaudio/best`（最高质量，需要 `ffmpeg`）。
+- 若本机未安装 `ffmpeg`，默认模式会提示安装并停止执行，你也可以用 `-f best` 跳过。
 - 如需下载受限内容，请自行准备 `cookies` 文件并通过 `--cookies` 传入。

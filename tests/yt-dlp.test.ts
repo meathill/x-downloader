@@ -27,7 +27,7 @@ test("buildYtDlpCommand: 默认模板", () => {
   const formatValue = command.args[formatIndex + 1];
 
   assert.equal(outputTemplate, path.join(BASE_OPTIONS.outputDir, "%(title)s.%(ext)s"));
-  assert.equal(formatValue, "best");
+  assert.equal(formatValue, "bestvideo*+bestaudio/best");
   assert.ok(command.args.includes("--no-playlist"));
 });
 

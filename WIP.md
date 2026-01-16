@@ -10,9 +10,11 @@
 - [x] 实现下载器执行层（优先调用本地 yt-dlp）
 - [x] 增加测试（参数解析、命令构建、错误处理）
 - [x] 补齐文档（README/TESTING/DEV_NOTE）
-- [ ] 调整默认行为（最高质量、Downloads）
-- [ ] 增加全局安装说明并验证命令可用
-- [ ] 生成并打包 Skill
+- [x] 调整默认行为（最高质量、Downloads）
+- [x] 增加全局安装说明并验证命令可用
+- [x] 补充 Skill 使用说明到 README
+- [x] 默认使用最高质量格式并增加 ffmpeg 检测提示
+- [x] 更新 Skill 目录内容（skills/x-downloader-cli）
 
 ## 待确认
 - [ ] 是否接受依赖外部工具（yt-dlp）
