@@ -1,0 +1,20 @@
+{
+  "name": "x-downloader",
+  "version": "0.1.0",
+  "description": "X 视频下载命令行工具",
+  "type": "module",
+  "bin": {
+    "x-downloader": "./src/cli.ts",
+    "xdown": "./src/cli.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.29.2"
+}

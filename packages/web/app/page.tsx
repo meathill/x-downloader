@@ -290,7 +290,7 @@ export default function HomePage(): JSX.Element {
 
         <section className="grid gap-2 text-xs text-muted-foreground">
           <p>提示：下载任务由服务器执行，不会在浏览器本地保存。</p>
-          <p>如需限制输出路径或下载频率，可在 `web/lib/download.ts` 中扩展。</p>
+          <p>如需限制输出路径或下载频率，可在 `packages/web/lib/download.ts` 中扩展。</p>
         </section>
 
         <Card className="shadow-sm">
