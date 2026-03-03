@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "x-downloader-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-03-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "x-downloader",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "DOWNLOAD_QUEUE",
+        "queue": "x-downloader-jobs"
+      }
+    ]
+  },
+  "r2_buckets": [
+    {
+      "binding": "JOB_FILES",
+      "bucket_name": "x-downloader-files",
+      "preview_bucket_name": "x-downloader-files-dev"
+    }
+  ],
+  "vars": {
+    "XDOWN_R2_PUBLIC_URL": "https://files.example.com"
+  }
+}

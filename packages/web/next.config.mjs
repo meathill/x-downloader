@@ -1,6 +1,7 @@
-const nextConfig = {
-  output: "standalone",
-  serverExternalPackages: ["better-sqlite3"]
-};
+import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
+
+initOpenNextCloudflareForDev();
+
+const nextConfig = {};
 
 export default nextConfig;

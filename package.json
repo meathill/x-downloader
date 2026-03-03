@@ -3,9 +3,17 @@
   "private": true,
   "packageManager": "pnpm@10.29.2",
   "scripts": {
-    "test": "pnpm --filter x-downloader test",
+    "format": "biome format --write .",
+    "test": "pnpm --filter x-downloader test && pnpm --filter x-downloader-web test && pnpm --filter x-downloader-worker test",
     "dev:web": "pnpm --filter x-downloader-web dev",
-    "build:web": "pnpm --filter x-downloader-web build",
+    "dev:web:cf": "pnpm --filter x-downloader-web dev:cf",
+    "start:worker": "pnpm --filter x-downloader-worker start",
+    "start:worker:once": "pnpm --filter x-downloader-worker start:once",
+    "build:web": "pnpm --filter x-downloader-web build:cf",
+    "build:web:next": "pnpm --filter x-downloader-web build",
     "start:web": "pnpm --filter x-downloader-web start"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.5"
   }
 }

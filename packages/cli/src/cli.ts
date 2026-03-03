@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
-import process from "node:process";
-import { parseCliArgs } from "./args.ts";
-import { ensureOutputDir } from "./fs.ts";
-import { getHelpText } from "./help.ts";
-import { VERSION } from "./version.ts";
-import { buildYtDlpCommand, runYtDlp } from "./yt-dlp.ts";
+import { spawn } from 'node:child_process';
+import process from 'node:process';
+import { parseCliArgs } from './args.ts';
+import { ensureOutputDir } from './fs.ts';
+import { getHelpText } from './help.ts';
+import { VERSION } from './version.ts';
+import { buildYtDlpCommand, runYtDlp } from './yt-dlp.ts';
 
 const EXIT_CODE_ERROR = 1;
 const EXIT_CODE_MISSING_DEP = 2;
@@ -25,8 +25,8 @@ async function main(): Promise<void> {
   }
 
   if (errors.length > 0) {
-    console.error(errors.join("\n"));
-    console.error("");
+    console.error(errors.join('\n'));
+    console.error('');
     console.error(getHelpText());
     process.exitCode = EXIT_CODE_ERROR;
     return;
@@ -58,8 +58,8 @@ async function main(): Promise<void> {
 }
 
 function handleError(error: unknown): void {
-  if (isErrnoException(error) && error.code === "ENOENT") {
-    console.error("未找到 yt-dlp，请先安装并确保命令可用。参考: https://github.com/yt-dlp/yt-dlp");
+  if (isErrnoException(error) && error.code === 'ENOENT') {
+    console.error('未找到 yt-dlp，请先安装并确保命令可用。参考: https://github.com/yt-dlp/yt-dlp');
     process.exitCode = EXIT_CODE_MISSING_DEP;
     return;
   }
@@ -70,12 +70,12 @@ function handleError(error: unknown): void {
     return;
   }
 
-  console.error("发生未知错误。");
+  console.error('发生未知错误。');
   process.exitCode = EXIT_CODE_ERROR;
 }
 
 function isErrnoException(value: unknown): value is NodeJS.ErrnoException {
-  return value instanceof Error && "code" in value;
+  return value instanceof Error && 'code' in value;
 }
 
 async function ensureFfmpegAvailable(options: { format?: string; listFormats: boolean }): Promise<boolean> {
@@ -83,9 +83,9 @@ async function ensureFfmpegAvailable(options: { format?: string; listFormats: bo
     return true;
   }
 
-  const available = await isCommandAvailable("ffmpeg", ["-version"]);
+  const available = await isCommandAvailable('ffmpeg', ['-version']);
   if (!available) {
-    console.error("默认最高质量需要 ffmpeg，请先安装（例如 `brew install ffmpeg`），或使用 -f best 跳过。");
+    console.error('默认最高质量需要 ffmpeg，请先安装（例如 `brew install ffmpeg`），或使用 -f best 跳过。');
     return false;
   }
 
@@ -94,13 +94,13 @@ async function ensureFfmpegAvailable(options: { format?: string; listFormats: bo
 
 async function isCommandAvailable(command: string, args: string[]): Promise<boolean> {
   return await new Promise((resolve) => {
-    const child = spawn(command, args, { stdio: "ignore" });
+    const child = spawn(command, args, { stdio: 'ignore' });
 
-    child.on("error", () => {
+    child.on('error', () => {
       resolve(false);
     });
 
-    child.on("close", (code) => {
+    child.on('close', (code) => {
       resolve(code === 0);
     });
   });

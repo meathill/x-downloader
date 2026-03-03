@@ -1,0 +1,23 @@
+services:
+  x-downloader-worker:
+    build:
+      context: .
+      dockerfile: packages/worker/Dockerfile
+    image: x-downloader-worker:latest
+    container_name: x-downloader-worker
+    restart: unless-stopped
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
+      - CF_QUEUE_ID=${CF_QUEUE_ID}
+      - XDOWN_WEB_BASE_URL=${XDOWN_WEB_BASE_URL}
+      - XDOWN_INTERNAL_SECRET=${XDOWN_INTERNAL_SECRET}
+      - XDOWN_R2_BUCKET=${XDOWN_R2_BUCKET}
+      - XDOWN_R2_ACCESS_KEY_ID=${XDOWN_R2_ACCESS_KEY_ID}
+      - XDOWN_R2_SECRET_ACCESS_KEY=${XDOWN_R2_SECRET_ACCESS_KEY}
+      - XDOWN_R2_ACCOUNT_ID=${XDOWN_R2_ACCOUNT_ID}
+      - XDOWN_R2_PUBLIC_URL=${XDOWN_R2_PUBLIC_URL}
+      - XDOWN_R2_PREFIX=${XDOWN_R2_PREFIX}
+      - XDOWN_PULL_BATCH_SIZE=${XDOWN_PULL_BATCH_SIZE:-1}
+      - XDOWN_PULL_VISIBILITY_TIMEOUT=${XDOWN_PULL_VISIBILITY_TIMEOUT:-300}
+      - XDOWN_POLL_INTERVAL_MS=${XDOWN_POLL_INTERVAL_MS:-2000}

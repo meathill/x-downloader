@@ -1,5 +1,5 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
 export async function ensureOutputDir(outputDir: string): Promise<string> {
   const resolved = path.resolve(outputDir);
@@ -20,7 +20,7 @@ async function safeStat(targetPath: string): Promise<fs.Stats | null> {
   try {
     return await fs.stat(targetPath);
   } catch (error) {
-    if (isErrnoException(error) && error.code === "ENOENT") {
+    if (isErrnoException(error) && error.code === 'ENOENT') {
       return null;
     }
     throw error;
@@ -28,5 +28,5 @@ async function safeStat(targetPath: string): Promise<fs.Stats | null> {
 }
 
 function isErrnoException(value: unknown): value is NodeJS.ErrnoException {
-  return value instanceof Error && "code" in value;
+  return value instanceof Error && 'code' in value;
 }

@@ -1,89 +1,96 @@
 # x-downloader
 
-X（原 Twitter）视频下载命令行工具，默认通过本地 `yt-dlp` 执行下载。
+一个面向个人部署的 X（Twitter）视频下载系统，采用“控制面 + 执行面”分离架构：
+- 控制面：Cloudflare Worker（Next.js + OpenNext）
+- 执行面：Mac mini 上运行的下载 worker（yt-dlp + ffmpeg）
+
+## 当前架构
+
+1. 用户在 Web UI 提交下载任务。
+2. Web API 校验请求后写入 D1，并发送消息到 Cloudflare Queue。
+3. Mac mini worker 通过 Queue Pull API 拉取任务，执行下载/转码并上传到 R2。
+4. worker 通过内部回调接口写回任务状态（`start` / `complete`，HMAC 签名）。
+5. Web UI 从 D1 展示任务列表，下载链接跳转到 R2。
+
+## Monorepo 目录
+
+- `packages/cli`：命令行下载工具（本地直接执行）。
+- `packages/web`：Next.js Web UI + API（部署到 Cloudflare Worker）。
+- `packages/worker`：执行 worker（部署到 Mac mini，支持容器化）。
 
 ## 前置条件
+
 - Node.js >= 24
-- 已安装 `yt-dlp` 并可在终端中直接执行
+- pnpm >= 10
+- Mac 执行端安装 `yt-dlp`、`ffmpeg`（容器镜像内已包含）
 
-## 全局安装
-```bash
-# 在仓库目录执行
-pnpm --filter x-downloader link --global
+## 本地开发
 
-# 之后即可直接使用命令
-x-downloader https://x.com/user/status/123
-```
-
-## 发布与安装（npm）
-```bash
-# 发布（需要先登录 npm 并确保包名可用）
-pnpm --filter x-downloader publish --access public
-
-# 用户侧全局安装
-pnpm add -g x-downloader
-```
-
-## Skill 使用说明
-如果你希望把它当作“技能说明”来使用，可以直接复用以下流程：
-- 适用场景：在本仓库内使用或修改 x-downloader CLI，或排查 `yt-dlp` 相关问题。
-- 默认行为：输出到 `~/Downloads`，格式为 `bestvideo*+bestaudio/best`（最高质量，需要 `ffmpeg`）。
-- 修改入口：参数解析在 `packages/cli/src/args.ts`；下载命令构建在 `packages/cli/src/yt-dlp.ts`；帮助信息在 `packages/cli/src/help.ts`。
-- 测试与文档：更新功能后运行 `node --test`，同步更新 `README.md`、`TESTING.md`、`DEV_NOTE.md`。
-
-## 使用方法
-```bash
-# 直接运行
-node packages/cli/src/cli.ts https://x.com/user/status/123
-
-# 指定输出目录与文件名
-node packages/cli/src/cli.ts https://x.com/user/status/123 -o ./videos -n demo.mp4
-
-# 列出可用格式
-node packages/cli/src/cli.ts https://x.com/user/status/123 -F
-```
-
-## Web UI
-Web UI 位于 `packages/web/`，基于 Next.js + TailwindCSS v4，并已接入 COSS UI 组件库，适合部署到服务器上供自己使用。
+### 1) 安装依赖
 
 ```bash
-cd packages/web
 pnpm install
-pnpm dev
 ```
 
-生产环境构建与启动：
+### 2) 启动 Web（Next 本地模式）
 
 ```bash
-pnpm build
-pnpm start
+pnpm dev:web
 ```
 
-注意：服务器上需安装 `yt-dlp` 与 `ffmpeg`，并确保命令可用。
-如遇到 `better-sqlite3` 的构建脚本被 pnpm 拒绝，请先执行 `pnpm approve-builds` 再重新安装。
-
-### COSS UI 组件
-本项目已通过 shadcn CLI 安装 COSS UI 组件与颜色 tokens，文件位于 `packages/web/components/ui`。如需更新，可在 `packages/web/` 目录执行：
+### 3) 启动 Web（Cloudflare/OpenNext 模式）
 
 ```bash
-pnpm dlx shadcn@latest add @coss/ui @coss/colors-neutral
+pnpm dev:web:cf
 ```
 
-### 任务队列与去重
-Web UI 使用 SQLite 记录任务，默认只允许同一条链接下载一次：
-- 新任务会写入 `packages/web/data/x-downloader.db` 并排队执行（同一时间只处理一个任务）。
-- 如果链接已下载或正在队列中，会直接提示并拒绝重复入队。
-- 任何一次 API 请求都会触发队列消费，直到队列清空。
-- 下载记录支持在 Web UI 中查看与删除，删除会同时移除已下载文件。
-- 已完成任务可通过 `/api/downloads/:id/file` 直接下载文件（Web UI 内提供下载按钮）。
+### 4) 启动执行 worker
 
-可选环境变量：
-- `X_DOWNLOADER_DATA_DIR`：指定数据库目录（默认 `packages/web/data`）。
-- `X_DOWNLOADER_DB_PATH`：指定数据库文件路径（优先级更高）。
-- `X_DOWNLOADER_OUTPUT_DIR`：指定下载输出目录（默认 `~/Downloads`）。
+```bash
+pnpm start:worker
+# 只处理一轮消息：
+pnpm start:worker:once
+```
 
-## 注意事项
-- 该工具只负责组装与执行下载命令，实际解析与下载由 `yt-dlp` 完成。
-- 默认输出目录为 `~/Downloads`，默认格式为 `bestvideo*+bestaudio/best`（最高质量，需要 `ffmpeg`）。
-- 若本机未安装 `ffmpeg`，默认模式会提示安装并停止执行，你也可以用 `-f best` 跳过。
-- 如需下载受限内容，请自行准备 `cookies` 文件并通过 `--cookies` 传入。
+## 测试与构建
+
+```bash
+# 全量测试（cli + web + worker）
+pnpm test
+
+# Cloudflare 构建产物（.open-next/worker.js）
+pnpm build:web
+
+# 仅 Next 构建（不做 OpenNext 打包）
+pnpm build:web:next
+```
+
+## Web API（核心）
+
+- `POST /api/download`：创建任务并入队。
+- `GET /api/downloads`：查询任务列表。
+- `DELETE /api/downloads/:id`：删除任务（非 running）。
+- `GET /api/downloads/:id/file`：跳转到 R2 下载链接。
+- `GET /api/health`：探活检查（D1/Queue/内部签名配置）。
+
+内部接口（仅 worker 调用）：
+- `POST /api/internal/jobs/:id/start`
+- `POST /api/internal/jobs/:id/complete`
+
+## 配置概览
+
+Web（Cloudflare 绑定，见 `packages/web/wrangler.jsonc`）：
+- `DB`（D1）
+- `DOWNLOAD_QUEUE`（Queue producer）
+- `JOB_FILES`（R2，可选，用于删除对象）
+- `XDOWN_INTERNAL_SECRET`（必须，与 worker 一致）
+- `XDOWN_R2_PUBLIC_URL`（建议）
+
+worker（Mac mini 环境变量）：
+- `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `CF_QUEUE_ID`
+- `XDOWN_WEB_BASE_URL`, `XDOWN_INTERNAL_SECRET`
+- `XDOWN_R2_BUCKET`, `XDOWN_R2_ACCESS_KEY_ID`, `XDOWN_R2_SECRET_ACCESS_KEY`
+- `XDOWN_R2_ENDPOINT` 或 `XDOWN_R2_ACCOUNT_ID`
+- 可选：`XDOWN_R2_PUBLIC_URL`, `XDOWN_R2_PREFIX`, `XDOWN_WORKER_ID`, `XDOWN_WORK_DIR`
+
+完整部署步骤见 [DEPLOYMENT.md](./DEPLOYMENT.md)。

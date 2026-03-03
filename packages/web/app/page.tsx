@@ -1,35 +1,16 @@
-"use client";
+'use client';
 
-import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-type DownloadStatus = "idle" | "loading" | "success" | "error";
+type DownloadStatus = 'idle' | 'loading' | 'success' | 'error';
 
 type DownloadResponse = {
   ok: boolean;
@@ -44,10 +25,12 @@ type DownloadResponse = {
 
 type DownloadTask = {
   id: number;
+  request_id: string;
   url: string;
   filename: string | null;
   format: string | null;
-  output_path: string | null;
+  r2_key: string | null;
+  r2_url: string | null;
   status: string;
   created_at: number;
   updated_at: number;
@@ -56,12 +39,12 @@ type DownloadTask = {
   error: string | null;
 };
 
-export default function HomePage(): JSX.Element {
-  const [url, setUrl] = useState("");
-  const [filename, setFilename] = useState("");
-  const [format, setFormat] = useState("");
-  const [status, setStatus] = useState<DownloadStatus>("idle");
-  const [message, setMessage] = useState("");
+export default function HomePage() {
+  const [url, setUrl] = useState('');
+  const [filename, setFilename] = useState('');
+  const [format, setFormat] = useState('');
+  const [status, setStatus] = useState<DownloadStatus>('idle');
+  const [message, setMessage] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
@@ -70,7 +53,7 @@ export default function HomePage(): JSX.Element {
   async function fetchTasks(): Promise<void> {
     setIsLoadingTasks(true);
     try {
-      const response = await fetch("/api/downloads?limit=100");
+      const response = await fetch('/api/downloads?limit=100');
       const data = (await response.json()) as { ok: boolean; items?: DownloadTask[] };
       if (data.ok && Array.isArray(data.items)) {
         setTasks(data.items);
@@ -81,17 +64,17 @@ export default function HomePage(): JSX.Element {
   }
 
   async function handleDelete(taskId: number): Promise<void> {
-    if (!confirm("确认要删除这条记录并移除文件吗？")) {
+    if (!confirm('确认要删除这条记录并移除文件吗？')) {
       return;
     }
 
     setIsDeletingId(taskId);
     try {
-      const response = await fetch(`/api/downloads/${taskId}`, { method: "DELETE" });
+      const response = await fetch(`/api/downloads/${taskId}`, { method: 'DELETE' });
       const data = (await response.json()) as { ok: boolean; message?: string };
       if (!data.ok) {
-        setStatus("error");
-        setMessage(data.message ?? "删除失败");
+        setStatus('error');
+        setMessage(data.message ?? '删除失败');
       }
     } finally {
       setIsDeletingId(null);
@@ -101,20 +84,20 @@ export default function HomePage(): JSX.Element {
 
   function formatTimestamp(value: number | null): string {
     if (!value) {
-      return "-";
+      return '-';
     }
-    return new Date(value).toLocaleString("zh-CN");
+    return new Date(value).toLocaleString('zh-CN');
   }
 
-  function renderStatusBadge(value: string): JSX.Element {
+  function renderStatusBadge(value: string) {
     switch (value) {
-      case "queued":
+      case 'queued':
         return <Badge variant="warning">排队中</Badge>;
-      case "running":
+      case 'running':
         return <Badge variant="info">下载中</Badge>;
-      case "done":
+      case 'done':
         return <Badge variant="success">已完成</Badge>;
-      case "failed":
+      case 'failed':
         return <Badge variant="error">失败</Badge>;
       default:
         return <Badge variant="outline">{value}</Badge>;
@@ -122,10 +105,10 @@ export default function HomePage(): JSX.Element {
   }
 
   function getDownloadHref(task: DownloadTask): string | null {
-    if (task.status !== "done") {
+    if (task.status !== 'done') {
       return null;
     }
-    if (!task.output_path) {
+    if (!task.r2_url && !task.r2_key) {
       return null;
     }
     return `/api/downloads/${task.id}/file`;
@@ -134,49 +117,47 @@ export default function HomePage(): JSX.Element {
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    setStatus("loading");
-    setMessage("");
+    setStatus('loading');
+    setMessage('');
     setLogs([]);
 
     try {
-      const response = await fetch("/api/download", {
-        method: "POST",
+      const response = await fetch('/api/download', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json"
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           url,
           filename: filename.trim() ? filename.trim() : undefined,
-          format: format.trim() ? format.trim() : undefined
-        })
+          format: format.trim() ? format.trim() : undefined,
+        }),
       });
 
       const data = (await response.json()) as DownloadResponse;
-      setStatus(data.ok ? "success" : "error");
-      const baseMessage = data.message ?? "";
+      setStatus(data.ok ? 'success' : 'error');
+      const baseMessage = data.message ?? '';
       setLogs(Array.isArray(data.logs) ? data.logs : []);
       if (data.task) {
-        const acceptLabel = data.accepted === false ? "未入队" : "已入队";
-        setMessage(
-          `${baseMessage} 任务 #${data.task.id}（${data.task.status ?? "queued"} / ${acceptLabel}）`
-        );
+        const acceptLabel = data.accepted === false ? '未入队' : '已入队';
+        setMessage(`${baseMessage} 任务 #${data.task.id}（${data.task.status ?? 'queued'} / ${acceptLabel}）`);
       } else {
         setMessage(baseMessage);
       }
       await fetchTasks();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "请求失败";
-      setStatus("error");
+      const errorMessage = error instanceof Error ? error.message : '请求失败';
+      setStatus('error');
       setMessage(errorMessage);
     }
   }
 
   function handleReset(): void {
-    setUrl("");
-    setFilename("");
-    setFormat("");
-    setStatus("idle");
-    setMessage("");
+    setUrl('');
+    setFilename('');
+    setFormat('');
+    setStatus('idle');
+    setMessage('');
     setLogs([]);
   }
 
@@ -185,11 +166,7 @@ export default function HomePage(): JSX.Element {
   }, []);
 
   const statusTone =
-    status === "success"
-      ? "text-emerald-600"
-      : status === "error"
-        ? "text-rose-600"
-        : "text-muted-foreground";
+    status === 'success' ? 'text-emerald-600' : status === 'error' ? 'text-rose-600' : 'text-muted-foreground';
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,var(--accent)_0%,var(--background)_45%,var(--muted)_100%)] px-6 py-12">
@@ -201,8 +178,7 @@ export default function HomePage(): JSX.Element {
           </div>
           <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">把 X 视频下载到你的服务器</h1>
           <p className="max-w-2xl text-base text-muted-foreground">
-            粘贴链接即可下载。默认保存到服务器的 <span className="font-semibold text-foreground">~/Downloads</span>，
-            默认最高质量格式（需要安装 ffmpeg）。
+            粘贴链接即可入队，执行 worker 会负责下载、转码并上传到 R2。默认最高质量格式（需要安装 ffmpeg）。
           </p>
         </header>
 
@@ -215,56 +191,50 @@ export default function HomePage(): JSX.Element {
             <form onSubmit={handleSubmit} className="grid gap-6">
               <Field>
                 <FieldLabel htmlFor="url">视频链接</FieldLabel>
-                <FieldControl>
-                  <Input
-                    id="url"
-                    name="url"
-                    placeholder="https://x.com/user/status/123"
-                    value={url}
-                    onChange={(event) => {
-                      setUrl(event.target.value);
-                    }}
-                    required
-                  />
-                </FieldControl>
+                <Input
+                  id="url"
+                  name="url"
+                  placeholder="https://x.com/user/status/123"
+                  value={url}
+                  onChange={(event) => {
+                    setUrl(event.target.value);
+                  }}
+                  required
+                />
                 <FieldDescription>必须是公开可访问的推文链接。</FieldDescription>
               </Field>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field>
                   <FieldLabel htmlFor="filename">文件名（可选）</FieldLabel>
-                  <FieldControl>
-                    <Input
-                      id="filename"
-                      name="filename"
-                      placeholder="demo.mp4"
-                      value={filename}
-                      onChange={(event) => {
-                        setFilename(event.target.value);
-                      }}
-                    />
-                  </FieldControl>
+                  <Input
+                    id="filename"
+                    name="filename"
+                    placeholder="demo.mp4"
+                    value={filename}
+                    onChange={(event) => {
+                      setFilename(event.target.value);
+                    }}
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="format">格式（可选）</FieldLabel>
-                  <FieldControl>
-                    <Input
-                      id="format"
-                      name="format"
-                      placeholder="bestvideo*+bestaudio/best"
-                      value={format}
-                      onChange={(event) => {
-                        setFormat(event.target.value);
-                      }}
-                    />
-                  </FieldControl>
+                  <Input
+                    id="format"
+                    name="format"
+                    placeholder="bestvideo*+bestaudio/best"
+                    value={format}
+                    onChange={(event) => {
+                      setFormat(event.target.value);
+                    }}
+                  />
                   <FieldDescription>如需单文件下载，可填 best。</FieldDescription>
                 </Field>
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button type="submit" disabled={status === "loading"}>
-                  {status === "loading" ? "下载中..." : "开始下载"}
+                <Button type="submit" disabled={status === 'loading'}>
+                  {status === 'loading' ? '下载中...' : '开始下载'}
                 </Button>
                 <Button type="button" variant="outline" onClick={handleReset}>
                   清空
@@ -274,23 +244,23 @@ export default function HomePage(): JSX.Element {
 
             <Separator />
             <div className="rounded-xl border bg-background p-4">
-              <p className={`text-sm ${statusTone}`}>{message || "等待指令中"}</p>
+              <p className={`text-sm ${statusTone}`}>{message || '等待指令中'}</p>
               {logs.length > 0 ? (
                 <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
-                  {logs.join("")}
+                  {logs.join('')}
                 </pre>
               ) : null}
             </div>
           </CardContent>
           <CardFooter className="justify-between text-xs text-muted-foreground">
             <span>默认最高质量需要 ffmpeg。</span>
-            <span>输出目录：~/Downloads</span>
+            <span>执行层：Queue Worker（Mac mini）</span>
           </CardFooter>
         </Card>
 
         <section className="grid gap-2 text-xs text-muted-foreground">
-          <p>提示：下载任务由服务器执行，不会在浏览器本地保存。</p>
-          <p>如需限制输出路径或下载频率，可在 `packages/web/lib/download.ts` 中扩展。</p>
+          <p>提示：下载任务由队列 worker 执行，不会在浏览器本地保存。</p>
+          <p>文件下载链接由 `/api/downloads/:id/file` 返回（通常跳转到 R2）。</p>
         </section>
 
         <Card className="shadow-sm">
@@ -300,7 +270,7 @@ export default function HomePage(): JSX.Element {
               <CardDescription>已入队与已完成的任务列表。</CardDescription>
             </div>
             <Button variant="outline" onClick={fetchTasks} disabled={isLoadingTasks}>
-              {isLoadingTasks ? "刷新中..." : "刷新"}
+              {isLoadingTasks ? '刷新中...' : '刷新'}
             </Button>
           </CardHeader>
           <CardContent>
@@ -334,14 +304,14 @@ export default function HomePage(): JSX.Element {
                         </TableCell>
                         <TableCell>{renderStatusBadge(task.status)}</TableCell>
                         <TableCell>{formatTimestamp(task.created_at)}</TableCell>
-                        <TableCell className="max-w-xs truncate" title={task.output_path ?? ""}>
-                          {task.output_path ?? "-"}
+                        <TableCell className="max-w-xs truncate" title={(task.r2_url ?? task.r2_key ?? '').toString()}>
+                          {task.r2_url ?? task.r2_key ?? '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             {downloadHref ? (
                               <a
-                                className={buttonVariants({ variant: "secondary", size: "sm" })}
+                                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
                                 href={downloadHref}
                                 download
                               >
@@ -355,12 +325,12 @@ export default function HomePage(): JSX.Element {
                             <Button
                               variant="destructive"
                               size="sm"
-                              disabled={isDeletingId === task.id || task.status === "running"}
+                              disabled={isDeletingId === task.id || task.status === 'running'}
                               onClick={() => {
                                 void handleDelete(task.id);
                               }}
                             >
-                              {isDeletingId === task.id ? "删除中..." : "删除"}
+                              {isDeletingId === task.id ? '删除中...' : '删除'}
                             </Button>
                           </div>
                         </TableCell>

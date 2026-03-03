@@ -3,5 +3,7 @@ node_modules
 packages/cli/node_modules
 packages/web/node_modules
 packages/web/.next
+packages/web/.open-next
 packages/web/data
+packages/worker/node_modules
 *.db
