@@ -1,4 +1,4 @@
-import { getCloudflareBindings, type D1Database } from './cloudflare-bindings.ts';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export type HealthStatus = 'pass' | 'warn' | 'fail';
 
@@ -16,19 +16,17 @@ export type HealthReport = {
 
 export type HealthDependencies = {
   now?: () => Date;
-  getBindings?: typeof getCloudflareBindings;
 };
 
 export async function buildHealthReport(dependencies: HealthDependencies = {}): Promise<HealthReport> {
   const now = dependencies.now ? dependencies.now() : new Date();
-  const loadBindings = dependencies.getBindings ?? getCloudflareBindings;
-  const bindings = await loadBindings();
+  const { env } = getCloudflareContext();
 
   const checks: HealthCheck[] = [];
-  checks.push(await checkD1(bindings.DB));
-  checks.push(checkQueue(Boolean(bindings.DOWNLOAD_QUEUE)));
-  checks.push(checkInternalSecret(bindings.XDOWN_INTERNAL_SECRET));
-  checks.push(checkR2PublicUrl(bindings.XDOWN_R2_PUBLIC_URL));
+  checks.push(await checkD1(env.DB));
+  checks.push(checkQueue(Boolean(env.DOWNLOAD_QUEUE)));
+  checks.push(checkInternalSecret(env.XDOWN_INTERNAL_SECRET));
+  checks.push(checkR2PublicUrl(env.NEXT_PUBLIC_FILE_PUBLIC_URL));
 
   return {
     ok: checks.every((check) => check.status !== 'fail'),
@@ -85,6 +83,6 @@ function checkR2PublicUrl(value: string | undefined): HealthCheck {
   return {
     name: 'r2_public_url',
     status: valid ? 'pass' : 'warn',
-    message: valid ? '已配置 R2 公网地址。' : '未配置 XDOWN_R2_PUBLIC_URL，将依赖任务回调中的 r2Url。',
+    message: valid ? '已配置 R2 公网地址。' : '未配置 NEXT_PUBLIC_FILE_PUBLIC_URL，将依赖任务回调中的 r2Url。',
   };
 }

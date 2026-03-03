@@ -1,4 +1,4 @@
-import { getD1Database, getDownloadQueueBinding, type D1Database } from '../../../lib/cloudflare-bindings';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { normalizeDownloadRequest } from '../../../lib/download-request';
 import { jsonNoStore } from '../../../lib/http';
 import { createJobMessage, type DownloadJobMessage } from '../../../lib/job-message';
@@ -33,12 +33,13 @@ export async function POST(request: Request): Promise<Response> {
     return jsonNoStore({ ok: false, message: normalized.message }, { status: 400 });
   }
 
-  const db = await getD1Database();
+  const { env } = getCloudflareContext();
+  const db = env.DB;
   if (!db) {
     return jsonNoStore({ ok: false, message: '服务未配置 D1。' }, { status: 503 });
   }
 
-  const queue = await getDownloadQueueBinding<DownloadJobMessage>();
+  const queue = env.DOWNLOAD_QUEUE;
   if (!queue) {
     return jsonNoStore({ ok: false, message: '服务未配置 DOWNLOAD_QUEUE。' }, { status: 503 });
   }

@@ -50,7 +50,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
     r2Endpoint,
     r2AccessKeyId,
     r2SecretAccessKey,
-    r2PublicUrl: normalizeOptionalUrl(readOptional(env, 'XDOWN_R2_PUBLIC_URL')),
+    r2PublicUrl: normalizeOptionalUrl(readOptional(env, 'NEXT_PUBLIC_FILE_PUBLIC_URL')),
     r2KeyPrefix: normalizeOptionalPrefix(readOptional(env, 'XDOWN_R2_PREFIX')),
   };
 }

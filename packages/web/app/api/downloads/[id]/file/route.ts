@@ -1,4 +1,4 @@
-import { getD1Database, getR2PublicUrl } from '../../../../../lib/cloudflare-bindings';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { applyNoStoreHeaders, jsonNoStore } from '../../../../../lib/http';
 import { findJobById } from '../../../../../lib/jobs-repository';
 
@@ -11,7 +11,8 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     return jsonNoStore({ ok: false, message: '任务 ID 不正确。' }, { status: 400 });
   }
 
-  const db = await getD1Database();
+  const { env } = getCloudflareContext();
+  const db = env.DB;
   if (!db) {
     return jsonNoStore({ ok: false, message: '服务未配置 D1。' }, { status: 503 });
   }
@@ -44,7 +45,8 @@ async function resolveDownloadUrl(storedUrl: string | null, key: string | null):
     return null;
   }
 
-  const publicBase = await getR2PublicUrl();
+  const { env } = getCloudflareContext();
+  const publicBase = env.NEXT_PUBLIC_FILE_PUBLIC_URL;
   if (!publicBase) {
     return null;
   }

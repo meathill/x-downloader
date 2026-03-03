@@ -22,7 +22,7 @@ test('buildHealthReport: 关键绑定齐全时返回 ok=true', async () => {
         send: async () => undefined,
       },
       XDOWN_INTERNAL_SECRET: '0123456789abcdef',
-      XDOWN_R2_PUBLIC_URL: 'https://files.example.com',
+      NEXT_PUBLIC_FILE_PUBLIC_URL: 'https://files.example.com',
     }),
   });
 

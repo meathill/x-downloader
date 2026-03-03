@@ -1,4 +1,4 @@
-import { getD1Database, getInternalCallbackSecret } from '../../../../../../lib/cloudflare-bindings';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { jsonNoStore } from '../../../../../../lib/http';
 import { parseJobCompletePayload } from '../../../../../../lib/internal-payload';
 import { readInternalAuthHeaders, verifyPayloadSignature } from '../../../../../../lib/internal-auth';
@@ -13,7 +13,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return jsonNoStore({ ok: false, message: '任务 ID 不正确。' }, { status: 400 });
   }
 
-  const secret = await getInternalCallbackSecret();
+  const { env } = getCloudflareContext();
+  const secret = env.XDOWN_INTERNAL_SECRET;
   if (!secret) {
     return jsonNoStore({ ok: false, message: '服务未配置内部签名密钥。' }, { status: 503 });
   }
@@ -31,7 +32,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return jsonNoStore({ ok: false, message: '回调数据格式不正确。' }, { status: 400 });
   }
 
-  const db = await getD1Database();
+  const db = env.DB;
   if (!db) {
     return jsonNoStore({ ok: false, message: '服务未配置 D1。' }, { status: 503 });
   }

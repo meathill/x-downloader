@@ -1,11 +1,12 @@
-import { getD1Database } from '../../../lib/cloudflare-bindings';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { jsonNoStore } from '../../../lib/http';
 import { listJobs } from '../../../lib/jobs-repository';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request): Promise<Response> {
-  const db = await getD1Database();
+  const { env } = getCloudflareContext();
+  const db = env.DB;
   if (!db) {
     return jsonNoStore({ ok: false, message: '服务未配置 D1。' }, { status: 503 });
   }

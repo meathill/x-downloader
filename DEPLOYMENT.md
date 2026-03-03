@@ -47,14 +47,13 @@ pnpm --filter x-downloader-web migrate:d1:local
 - `XDOWN_INTERNAL_SECRET`：内部回调签名密钥（建议 >= 32 字符）
 
 建议：
-- `XDOWN_R2_PUBLIC_URL`：R2 公网域名（用于下载跳转）
+- `NEXT_PUBLIC_FILE_PUBLIC_URL`：R2 公网域名（用于下载跳转）
 
 示例：
 
 ```bash
 cd packages/web
 wrangler secret put XDOWN_INTERNAL_SECRET
-wrangler secret put XDOWN_R2_PUBLIC_URL
 ```
 
 ### 3.2 构建并部署
@@ -98,7 +97,7 @@ docker run --rm \
   -e XDOWN_R2_ACCESS_KEY_ID=... \
   -e XDOWN_R2_SECRET_ACCESS_KEY=... \
   -e XDOWN_R2_ACCOUNT_ID=... \
-  -e XDOWN_R2_PUBLIC_URL=https://files.example.com \
+  -e NEXT_PUBLIC_FILE_PUBLIC_URL=https://files.example.com \
   x-downloader-worker
 ```
 
@@ -120,7 +119,7 @@ R2 上传：
 - `XDOWN_R2_ENDPOINT` 或 `XDOWN_R2_ACCOUNT_ID`
 
 可选调优：
-- `XDOWN_R2_PUBLIC_URL`
+- `NEXT_PUBLIC_FILE_PUBLIC_URL`
 - `XDOWN_R2_PREFIX`
 - `XDOWN_WORKER_ID`
 - `XDOWN_WORK_DIR`

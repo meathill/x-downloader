@@ -1,4 +1,4 @@
-import { getD1Database, getJobFilesBucketBinding } from '../../../../lib/cloudflare-bindings';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { jsonNoStore } from '../../../../lib/http';
 import { deleteJob, findJobById } from '../../../../lib/jobs-repository';
 
@@ -11,7 +11,8 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     return jsonNoStore({ ok: false, message: '任务 ID 不正确。' }, { status: 400 });
   }
 
-  const db = await getD1Database();
+  const { env } = getCloudflareContext();
+  const db = env.DB;
   if (!db) {
     return jsonNoStore({ ok: false, message: '服务未配置 D1。' }, { status: 503 });
   }
@@ -27,7 +28,7 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
 
   let r2Deleted = false;
   if (job.r2_key) {
-    const bucket = await getJobFilesBucketBinding();
+    const bucket = env.JOB_FILES;
     if (bucket) {
       try {
         await bucket.delete(job.r2_key);

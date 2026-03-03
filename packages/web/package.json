@@ -5,17 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack -p 3025",
-    "dev:cf": "opennextjs-cloudflare dev --port 3025",
-    "build": "next build --webpack",
-    "build:cf": "opennextjs-cloudflare build",
-    "preview": "opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare deploy",
+    "build": "next build --turbopack",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "types:worker": "wrangler types",
     "migrate:d1": "wrangler d1 migrations apply x-downloader --remote",
     "migrate:d1:local": "wrangler d1 migrations apply x-downloader --local",
-    "start": "next start",
-    "lint": "next lint",
-    "test": "node --test tests/**/*.test.ts"
+    "test": "node --test tests/**/*.test.ts",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv env.d.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",

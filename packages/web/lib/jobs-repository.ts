@@ -1,4 +1,4 @@
-import type { D1Database, D1RunResult } from './cloudflare-bindings';
+// D1Database and D1RunResult are global from @cloudflare/workers-types
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'canceled';
 
@@ -226,7 +226,7 @@ async function requireJobByRequestId(db: D1Database, requestId: string): Promise
   return job;
 }
 
-function readChangeCount(result: D1RunResult): number {
+function readChangeCount(result: D1Result): number {
   if (!result.meta) {
     return result.success ? 1 : 0;
   }
