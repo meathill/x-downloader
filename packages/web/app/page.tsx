@@ -2,13 +2,17 @@
 
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Download, History, Zap, Shield, Globe, Terminal, User, LogOut } from 'lucide-react';
+import { signIn, signOut, useSession } from '@/lib/auth-client';
 
 type DownloadStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -49,11 +53,12 @@ export default function HomePage() {
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [isDeletingId, setIsDeletingId] = useState<number | null>(null);
+  const { data: session, isPending: isSessionPending } = useSession();
 
   async function fetchTasks(): Promise<void> {
     setIsLoadingTasks(true);
     try {
-      const response = await fetch('/api/downloads?limit=100');
+      const response = await fetch('/api/downloads?limit=10');
       const data = (await response.json()) as { ok: boolean; items?: DownloadTask[] };
       if (data.ok && Array.isArray(data.items)) {
         setTasks(data.items);
@@ -83,40 +88,52 @@ export default function HomePage() {
   }
 
   function formatTimestamp(value: number | null): string {
-    if (!value) {
-      return '-';
-    }
-    return new Date(value).toLocaleString('zh-CN');
+    if (!value) return '-';
+    return new Date(value).toLocaleString('zh-CN', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   function renderStatusBadge(value: string) {
     switch (value) {
       case 'queued':
-        return <Badge variant="warning">排队中</Badge>;
+        return (
+          <Badge variant="warning" className="rounded-full px-2.5 py-0.5">
+            排队中
+          </Badge>
+        );
       case 'running':
-        return <Badge variant="info">下载中</Badge>;
+        return (
+          <Badge variant="info" className="rounded-full px-2.5 py-0.5 animate-pulse">
+            下载中
+          </Badge>
+        );
       case 'done':
-        return <Badge variant="success">已完成</Badge>;
+        return (
+          <Badge variant="success" className="rounded-full px-2.5 py-0.5">
+            已完成
+          </Badge>
+        );
       case 'failed':
-        return <Badge variant="error">失败</Badge>;
+        return (
+          <Badge variant="destructive" className="rounded-full px-2.5 py-0.5">
+            失败
+          </Badge>
+        );
       default:
-        return <Badge variant="outline">{value}</Badge>;
+        return (
+          <Badge variant="outline" className="rounded-full px-2.5 py-0.5">
+            {value}
+          </Badge>
+        );
     }
-  }
-
-  function getDownloadHref(task: DownloadTask): string | null {
-    if (task.status !== 'done') {
-      return null;
-    }
-    if (!task.r2_url && !task.r2_key) {
-      return null;
-    }
-    return `/api/downloads/${task.id}/file`;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-
     setStatus('loading');
     setMessage('');
     setLogs([]);
@@ -124,9 +141,7 @@ export default function HomePage() {
     try {
       const response = await fetch('/api/download', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           url,
           filename: filename.trim() ? filename.trim() : undefined,
@@ -136,213 +151,316 @@ export default function HomePage() {
 
       const data = (await response.json()) as DownloadResponse;
       setStatus(data.ok ? 'success' : 'error');
-      const baseMessage = data.message ?? '';
+      setMessage(data.message ?? '');
       setLogs(Array.isArray(data.logs) ? data.logs : []);
-      if (data.task) {
-        const acceptLabel = data.accepted === false ? '未入队' : '已入队';
-        setMessage(`${baseMessage} 任务 #${data.task.id}（${data.task.status ?? 'queued'} / ${acceptLabel}）`);
-      } else {
-        setMessage(baseMessage);
-      }
       await fetchTasks();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '请求失败';
       setStatus('error');
-      setMessage(errorMessage);
+      setMessage(error instanceof Error ? error.message : '请求失败');
     }
-  }
-
-  function handleReset(): void {
-    setUrl('');
-    setFilename('');
-    setFormat('');
-    setStatus('idle');
-    setMessage('');
-    setLogs([]);
   }
 
   useEffect(() => {
     void fetchTasks();
   }, []);
 
-  const statusTone =
-    status === 'success' ? 'text-emerald-600' : status === 'error' ? 'text-rose-600' : 'text-muted-foreground';
-
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,var(--accent)_0%,var(--background)_45%,var(--muted)_100%)] px-6 py-12">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
-        <header className="grid gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary">X Downloader</Badge>
-            <Badge variant="outline">self-hosted</Badge>
-          </div>
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">把 X 视频下载到你的服务器</h1>
-          <p className="max-w-2xl text-base text-muted-foreground">
-            粘贴链接即可入队，执行 worker 会负责下载、转码并上传到 R2。默认最高质量格式（需要安装 ffmpeg）。
-          </p>
-        </header>
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+      {/* Premium Background Elements */}
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_0%,oklch(0.9_0.1_280)_0%,transparent_50%)] opacity-40" />
+      <div className="fixed top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>开始下载</CardTitle>
-            <CardDescription>支持 x.com / twitter.com 链接，格式可按需覆盖。</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-6">
-            <form onSubmit={handleSubmit} className="grid gap-6">
-              <Field>
-                <FieldLabel htmlFor="url">视频链接</FieldLabel>
-                <Input
-                  id="url"
-                  name="url"
-                  placeholder="https://x.com/user/status/123"
-                  value={url}
-                  onChange={(event) => {
-                    setUrl(event.target.value);
-                  }}
-                  required
-                />
-                <FieldDescription>必须是公开可访问的推文链接。</FieldDescription>
-              </Field>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field>
-                  <FieldLabel htmlFor="filename">文件名（可选）</FieldLabel>
-                  <Input
-                    id="filename"
-                    name="filename"
-                    placeholder="demo.mp4"
-                    value={filename}
-                    onChange={(event) => {
-                      setFilename(event.target.value);
-                    }}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="format">格式（可选）</FieldLabel>
-                  <Input
-                    id="format"
-                    name="format"
-                    placeholder="bestvideo*+bestaudio/best"
-                    value={format}
-                    onChange={(event) => {
-                      setFormat(event.target.value);
-                    }}
-                  />
-                  <FieldDescription>如需单文件下载，可填 best。</FieldDescription>
-                </Field>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button type="submit" disabled={status === 'loading'}>
-                  {status === 'loading' ? '下载中...' : '开始下载'}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleReset}>
-                  清空
-                </Button>
-              </div>
-            </form>
-
-            <Separator />
-            <div className="rounded-xl border bg-background p-4">
-              <p className={`text-sm ${statusTone}`}>{message || '等待指令中'}</p>
-              {logs.length > 0 ? (
-                <pre className="mt-3 max-h-52 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
-                  {logs.join('')}
-                </pre>
-              ) : null}
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 border-b border-border/40 bg-background/60 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary p-1 shadow-lg shadow-primary/20">
+              <Image src="/logo.png" alt="Logo" width={28} height={28} className="brightness-110" />
             </div>
-          </CardContent>
-          <CardFooter className="justify-between text-xs text-muted-foreground">
-            <span>默认最高质量需要 ffmpeg。</span>
-            <span>执行层：Queue Worker（Mac mini）</span>
-          </CardFooter>
-        </Card>
+            <span className="text-lg font-bold tracking-tight">X Downloader</span>
+          </div>
+          <div className="flex items-center gap-4">
+            {isSessionPending ? (
+              <div className="h-9 w-20 animate-pulse rounded-lg bg-muted" />
+            ) : session ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 rounded-full border border-border/40 bg-background/40 p-1 pr-3">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <User size={14} />
+                  </div>
+                  <span className="text-xs font-medium">{session.user.name}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => void signOut()}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <LogOut size={14} />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" render={<Link href="/login" />} className="hidden sm:inline-flex">
+                  登录
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  render={<Link href="/login" />}
+                  className="bg-primary shadow-lg shadow-primary/20"
+                >
+                  立即注册
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
 
-        <section className="grid gap-2 text-xs text-muted-foreground">
-          <p>提示：下载任务由队列 worker 执行，不会在浏览器本地保存。</p>
-          <p>文件下载链接由 `/api/downloads/:id/file` 返回（通常跳转到 R2）。</p>
+      <main className="mx-auto max-w-7xl px-6 pb-24 pt-16 sm:pt-24">
+        {/* Hero Section */}
+        <section className="mb-24 text-center">
+          <Badge variant="secondary" className="mb-6 animate-in fade-in slide-in-from-bottom-3 duration-700">
+            全新升级：更强、更美、更简单
+          </Badge>
+          <h1 className="mb-6 bg-gradient-to-b from-foreground to-foreground/70 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent animate-in fade-in slide-in-from-bottom-4 sm:text-7xl duration-700 delay-100">
+            把 X 视频
+            <br />
+            一键存入你的云盘
+          </h1>
+          <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+            粘贴 X (Twitter) 链接，全自动化下载、转码并同步到你的云端存储。随时随地，最高画质保证。
+          </p>
+
+          {/* Main Action Card */}
+          <div className="mx-auto max-w-3xl animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+            <Card className="relative overflow-hidden border-border/40 bg-card/50 shadow-2xl backdrop-blur-md ring-1 ring-white/10">
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
+              <CardContent className="p-8">
+                <form onSubmit={handleSubmit} className="grid gap-6">
+                  <Field className="text-left">
+                    <FieldLabel htmlFor="url" className="text-sm font-semibold opacity-70">
+                      推文链接
+                    </FieldLabel>
+                    <div className="mt-2 flex gap-3">
+                      <div className="relative flex-1">
+                        <Input
+                          id="url"
+                          placeholder="https://x.com/username/status/..."
+                          className="h-14 border-border/30 bg-background/40 px-5 text-base focus:ring-primary/20"
+                          value={url}
+                          onChange={(e) => setUrl(e.target.value)}
+                          required
+                        />
+                        <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-20">
+                          <Globe size={20} />
+                        </div>
+                      </div>
+                      <Button
+                        type="submit"
+                        size="xl"
+                        className="h-14 min-w-[140px] bg-primary hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-primary/25"
+                        disabled={status === 'loading'}
+                      >
+                        {status === 'loading' ? (
+                          <div className="flex items-center gap-2">
+                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            入队中...
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-lg">
+                            <Zap size={20} className="fill-current" />
+                            开始下载
+                          </div>
+                        )}
+                      </Button>
+                    </div>
+                  </Field>
+
+                  <div className="grid gap-4 sm:grid-cols-2 text-left">
+                    <Field>
+                      <FieldLabel htmlFor="filename" className="text-xs font-medium opacity-50">
+                        自定义文件名 (可选)
+                      </FieldLabel>
+                      <Input
+                        id="filename"
+                        placeholder="my-video.mp4"
+                        className="mt-1.5 h-11 border-border/20 bg-background/20"
+                        value={filename}
+                        onChange={(e) => setFilename(e.target.value)}
+                      />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor="format" className="text-xs font-medium opacity-50">
+                        FFmpeg 格式 (可选)
+                      </FieldLabel>
+                      <Input
+                        id="format"
+                        placeholder="bestvideo+bestaudio"
+                        className="mt-1.5 h-11 border-border/20 bg-background/20"
+                        value={format}
+                        onChange={(e) => setFormat(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+                </form>
+
+                {message && (
+                  <div
+                    className={`mt-6 rounded-xl border border-border/20 p-4 text-left transition-all ${status === 'error' ? 'bg-destructive/5 text-destructive border-destructive/20' : 'bg-primary/5 text-primary border-primary/20'}`}
+                  >
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      {status === 'error' ? <Shield size={16} /> : <Zap size={16} />}
+                      {message}
+                    </div>
+                    {logs.length > 0 && (
+                      <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap rounded-lg bg-black/5 p-3 text-[11px] font-mono leading-relaxed opacity-70">
+                        {logs.join('')}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid gap-1">
-              <CardTitle>下载记录</CardTitle>
-              <CardDescription>已入队与已完成的任务列表。</CardDescription>
+        {/* Features Section */}
+        <section className="mb-32 grid gap-8 sm:grid-cols-3">
+          {[
+            {
+              icon: <Zap className="text-amber-500" />,
+              title: '极速响应',
+              desc: '基于 Cloudflare Worker 队列，秒级响应下载请求。',
+            },
+            {
+              icon: <Shield className="text-emerald-500" />,
+              title: '云盘直连',
+              desc: '自动转存至你的云端空间，文件永久在线，随时预览。',
+            },
+            {
+              icon: <Globe className="text-primary" />,
+              title: '全球加速',
+              desc: '节点遍布全球，无论身在何处都能快速下载。',
+            },
+          ].map((feature, i) => (
+            <div
+              key={i}
+              className="group rounded-3xl border border-border/30 bg-card/30 p-8 transition-all hover:bg-card/50 hover:shadow-xl"
+            >
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-background shadow-sm group-hover:scale-110 transition-transform">
+                {feature.icon}
+              </div>
+              <h3 className="mb-3 text-xl font-bold">{feature.title}</h3>
+              <p className="text-muted-foreground leading-relaxed">{feature.desc}</p>
             </div>
-            <Button variant="outline" onClick={fetchTasks} disabled={isLoadingTasks}>
-              {isLoadingTasks ? '刷新中...' : '刷新'}
+          ))}
+        </section>
+
+        {/* Content Tabs / History */}
+        <section className="relative">
+          <div className="absolute inset-0 -z-50 bg-[radial-gradient(circle_at_100%_100%,oklch(0.5_0.2_300)_0%,transparent_40%)] opacity-10" />
+
+          <div className="mb-8 flex items-end justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
+                <History className="text-muted-foreground" size={20} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">下载历史</h2>
+                <p className="text-sm text-muted-foreground">最近生成的 10 条任务记录</p>
+              </div>
+            </div>
+            <Button variant="outline" onClick={fetchTasks} disabled={isLoadingTasks} className="gap-2">
+              <Zap size={14} className={isLoadingTasks ? 'animate-spin' : ''} />
+              刷新列表
             </Button>
-          </CardHeader>
-          <CardContent>
+          </div>
+
+          <Card className="overflow-hidden border-border/40 bg-card/30 backdrop-blur-sm">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>链接</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead>输出文件</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+              <TableHeader className="bg-muted/30">
+                <TableRow className="hover:bg-transparent border-border/20">
+                  <TableHead className="w-[80px]">ID</TableHead>
+                  <TableHead>原视频链接</TableHead>
+                  <TableHead>任务状态</TableHead>
+                  <TableHead>创建于</TableHead>
+                  <TableHead className="text-right">任务操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tasks.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                      暂无记录
+                    <TableCell colSpan={5} className="h-64 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
+                        <Terminal size={48} />
+                        <span className="text-sm">暂无下载记录</span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  tasks.map((task) => {
-                    const downloadHref = getDownloadHref(task);
-
-                    return (
-                      <TableRow key={task.id}>
-                        <TableCell className="font-medium">#{task.id}</TableCell>
-                        <TableCell className="max-w-xs truncate" title={task.url}>
+                  tasks.map((task) => (
+                    <TableRow key={task.id} className="group border-border/10 hover:bg-muted/20 transition-colors">
+                      <TableCell className="font-mono text-xs opacity-50 underline decoration-primary/20 decoration-2 underline-offset-4">
+                        #{task.id}
+                      </TableCell>
+                      <TableCell className="max-w-[300px] truncate">
+                        <a
+                          href={task.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm hover:text-primary hover:underline transition-all"
+                        >
                           {task.url}
-                        </TableCell>
-                        <TableCell>{renderStatusBadge(task.status)}</TableCell>
-                        <TableCell>{formatTimestamp(task.created_at)}</TableCell>
-                        <TableCell className="max-w-xs truncate" title={(task.r2_url ?? task.r2_key ?? '').toString()}>
-                          {task.r2_url ?? task.r2_key ?? '-'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {downloadHref ? (
-                              <a
-                                className={buttonVariants({ variant: 'secondary', size: 'sm' })}
-                                href={downloadHref}
-                                download
-                              >
-                                下载
-                              </a>
-                            ) : (
-                              <Button variant="secondary" size="sm" disabled>
-                                下载
-                              </Button>
-                            )}
+                        </a>
+                      </TableCell>
+                      <TableCell>{renderStatusBadge(task.status)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {formatTimestamp(task.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {task.status === 'done' && (
                             <Button
-                              variant="destructive"
-                              size="sm"
-                              disabled={isDeletingId === task.id || task.status === 'running'}
-                              onClick={() => {
-                                void handleDelete(task.id);
-                              }}
+                              variant="secondary"
+                              size="xs"
+                              render={<a href={`/api/downloads/${task.id}/file`} download />}
                             >
-                              {isDeletingId === task.id ? '删除中...' : '删除'}
+                              立即获取
                             </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
+                          )}
+                          <Button
+                            variant="destructive-outline"
+                            size="xs"
+                            disabled={isDeletingId === task.id || task.status === 'running'}
+                            onClick={() => void handleDelete(task.id)}
+                          >
+                            {isDeletingId === task.id ? '处理中' : '移除'}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+          </Card>
+        </section>
+
+        {/* Footer */}
+        <footer className="mt-40 border-t border-border/20 pt-12 text-center text-sm text-muted-foreground/60">
+          <p>© 2026 X Downloader • 基于 OpenNext & Cloudflare 构建</p>
+          <div className="mt-4 flex justify-center gap-6">
+            <span className="flex items-center gap-1.5">
+              <Terminal size={12} /> Edge Runtime
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Shield size={12} /> Cloud Sync
+            </span>
+          </div>
+        </footer>
+      </main>
+    </div>
   );
 }
